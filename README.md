@@ -15,7 +15,7 @@ A physical AI coding companion that connects **Logitech MX Creative Console** to
 | Feature | Description |
 |---------|-------------|
 | 🎨 **Ghost Animation** | 9-tile animated Kiro ghost walks across LCD while Kiro is working |
-| 🔥 **Context Health** | Ghost changes appearance based on real context window usage (normal → worried → fire) |
+| 🔥 **Session Health** | Ghost animation changes as session grows longer — hints when to start fresh (normal → worried → fire) |
 | 📸 **Screenshot → Chat** | One button: crosshair → select area → auto-paste into Kiro chat |
 | 🎬 **Screen Record → Chat** | Quick mode (5 frames) or Long mode (10 frames) — select area, capture sequence, auto-paste into chat for visual analysis |
 | ❓ **Ask Kiro** | Select text in any app, press button — Kiro answers about the selected content |
@@ -113,17 +113,17 @@ Each button sends a prompt about the active file. Must be in this order for anim
 **Dial:** Session Navigate (18 notch threshold)
 **Roller:** Assign Logi native action (Volume, Zoom, etc.)
 
-## Context Health Indicator
+## Session Health Indicator
 
-The ghost animation changes based on real Kiro context window usage:
+The ghost animation changes based on session activity — tracking how much work has been done in the current session. This is estimated from session file growth (Kiro IDE doesn't expose real token counts externally yet).
 
-| Usage | Ghost | Meaning |
-|-------|-------|---------|
-| 0-60% | Normal 👻 | Healthy working range |
-| 60-75% | Worried 😰 | Session getting long, context filling up |
-| 75%+ | On Fire 🔥 | Start a new session — auto-summarization imminent |
+| Session Activity | Ghost | Meaning |
+|-----------------|-------|---------|
+| Light | Normal 👻 | Plenty of room, keep going |
+| Moderate | Worried 😰 | Session getting long, consider wrapping up |
+| Heavy | On Fire 🔥 | Time to start a new session |
 
-Kiro auto-summarizes at 80%, so the fire animation warns you **before** context loss occurs.
+> **Note:** This is a heuristic based on session file size, not the IDE's actual context percentage. Accuracy improves over longer sessions. For a precise reading, check the context indicator inside Kiro IDE.
 
 ## Development
 
