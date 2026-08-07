@@ -233,9 +233,9 @@ function startAlwaysOnPoller() {
       lastSessionSize = totalSize;
     }
 
-    // Only update health when state is WORKING
-    // Health can only go UP during a working session
-    if (bridgeState === KiroState.WORKING && usage > contextUsagePercent && usage > 0) {
+    // Update health when state is WORKING and usage changed
+    // Allow both increases AND decreases (workspace switch, compaction)
+    if (bridgeState === KiroState.WORKING && usage > 0 && usage !== contextUsagePercent) {
       contextUsagePercent = usage;
       lastPolledUsage = usage;
       const level = getHealthLevel();
@@ -265,7 +265,7 @@ httpServer.onStateChange((state) => {
     lastMtimeChangeAt = Date.now();
     // Immediately read context usage for correct health level
     void readLatestSessionFile().then(({ usage, mtime, totalSize }) => {
-      if (usage > 0 && usage >= contextUsagePercent) {
+      if (usage > 0) {
         contextUsagePercent = usage;
         lastPolledUsage = usage;
         lastSessionMtime = mtime;
