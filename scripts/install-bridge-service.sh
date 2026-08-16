@@ -1,34 +1,51 @@
 #!/bin/bash
-# Install MX Kiro Bridge as a macOS LaunchAgent (auto-start on login)
+# Install MX Kiro Bridge as a macOS launchd service (auto-start on login)
 
-PLIST_NAME="com.mxkiro.bridge.plist"
-PLIST_SRC="$(dirname "$0")/$PLIST_NAME"
-PLIST_DST="$HOME/Library/LaunchAgents/$PLIST_NAME"
+set -e
 
-echo "📦 Installing MX Kiro Bridge LaunchAgent..."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+BRIDGE_DIR="$PROJECT_DIR/packages/bridge"
+PLIST_NAME="com.mxkiro.bridge"
+PLIST_SRC="$SCRIPT_DIR/$PLIST_NAME.plist"
+PLIST_DST="$HOME/Library/LaunchAgents/$PLIST_NAME.plist"
 
-# Stop if already loaded
-launchctl bootout gui/$(id -u) "$PLIST_DST" 2>/dev/null
+echo "📱 Installing MX Kiro Bridge service..."
+echo "   Bridge path: $BRIDGE_DIR"
 
-# Copy plist
-cp "$PLIST_SRC" "$PLIST_DST"
-echo "   ✅ Plist copied to $PLIST_DST"
-
-# Load
-launchctl bootstrap gui/$(id -u) "$PLIST_DST"
-echo "   ✅ LaunchAgent loaded"
-
-# Verify
-sleep 2
-if curl -s http://localhost:9848/health | grep -q '"status":"ok"'; then
-    echo "   ✅ Bridge is running!"
-    echo ""
-    echo "   Health: $(curl -s http://localhost:9848/health)"
-else
-    echo "   ⚠️  Bridge may not be running yet. Check: tail -f /tmp/mxkiro-bridge.log"
+# Check dependencies
+if ! command -v npx &>/dev/null; then
+  echo "❌ npx not found. Install Node.js first."
+  exit 1
 fi
 
+if ! command -v ffmpeg &>/dev/null; then
+  echo "⚠️  ffmpeg not found. iPhone video frame extraction won't work."
+  echo "   Install with: brew install ffmpeg"
+fi
+
+# Unload existing service if running
+if launchctl list | grep -q "$PLIST_NAME" 2>/dev/null; then
+  echo "   Stopping existing service..."
+  launchctl unload "$PLIST_DST" 2>/dev/null || true
+fi
+
+# Generate plist with correct paths
+NPX_PATH="$(which npx)"
+sed -e "s|BRIDGE_PATH_PLACEHOLDER|$BRIDGE_DIR|g" \
+    -e "s|/usr/local/bin/npx|$NPX_PATH|g" \
+    "$PLIST_SRC" > "$PLIST_DST"
+
+# Load the service
+launchctl load "$PLIST_DST"
+
 echo ""
-echo "Done! Bridge will auto-start on login."
-echo "To stop: launchctl bootout gui/\$(id -u) $PLIST_DST"
-echo "Logs: tail -f /tmp/mxkiro-bridge.log"
+echo "✅ Bridge service installed!"
+echo "   Status: $(launchctl list | grep $PLIST_NAME | awk '{print $1 == "0" ? "error" : "running (PID "$1")"}')"
+echo "   Logs: /tmp/mxkiro-bridge.log"
+echo ""
+echo "   Commands:"
+echo "   - Stop:    launchctl unload ~/Library/LaunchAgents/$PLIST_NAME.plist"
+echo "   - Start:   launchctl load ~/Library/LaunchAgents/$PLIST_NAME.plist"
+echo "   - Logs:    tail -f /tmp/mxkiro-bridge.log"
+echo "   - Remove:  launchctl unload ~/Library/LaunchAgents/$PLIST_NAME.plist && rm ~/Library/LaunchAgents/$PLIST_NAME.plist"

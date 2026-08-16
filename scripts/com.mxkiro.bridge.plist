@@ -4,41 +4,26 @@
 <dict>
     <key>Label</key>
     <string>com.mxkiro.bridge</string>
-
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/akif/.nvm/versions/node/v24.14.0/bin/npx</string>
+        <string>/usr/local/bin/npx</string>
         <string>tsx</string>
         <string>src/index.ts</string>
     </array>
-
     <key>WorkingDirectory</key>
-    <string>/Users/akif/Projects/mxkiro/packages/bridge</string>
-
+    <string>BRIDGE_PATH_PLACEHOLDER</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/mxkiro-bridge.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/mxkiro-bridge.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/akif/.nvm/versions/node/v24.14.0/bin:/Users/akif/.local/bin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/opt/homebrew/bin</string>
-        <key>HOME</key>
-        <string>/Users/akif</string>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
     </dict>
-
-    <key>RunAtLoad</key>
-    <true/>
-
-    <key>KeepAlive</key>
-    <dict>
-        <key>SuccessfulExit</key>
-        <false/>
-    </dict>
-
-    <key>StandardOutPath</key>
-    <string>/tmp/mxkiro-bridge.log</string>
-
-    <key>StandardErrorPath</key>
-    <string>/tmp/mxkiro-bridge.log</string>
-
-    <key>ThrottleInterval</key>
-    <integer>10</integer>
 </dict>
 </plist>

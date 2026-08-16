@@ -16,8 +16,9 @@ A physical AI coding companion that connects **Logitech MX Creative Console** to
 |---------|-------------|
 | 🎨 **Ghost Animation** | 9-tile animated Kiro ghost walks across LCD while Kiro is working |
 | 🔥 **Context Health** | Ghost changes appearance based on real context window usage (normal → worried → fire) |
-| 📸 **Screenshot → Chat** | One button: crosshair → select area → auto-paste into Kiro chat |
+| 📸 **Screenshot → Chat** | One button: crosshair → select area → auto-compress JPEG → paste into Kiro chat |
 | 🎬 **Screen Record → Chat** | Quick mode (5 frames) or Long mode (10 frames) — select area, capture sequence, auto-paste into chat for visual analysis |
+| 📱 **iPhone Record** | Record video with iPhone → frames extracted (ffmpeg, 1fps, max 8) → auto-paste into Kiro chat. Capture physical screens, whiteboards, devices |
 | ❓ **Ask Kiro** | Select text in any app, press button — Kiro answers about the selected content |
 | ⏹️ **Stop/Cancel** | Physical button to cancel Kiro's active generation |
 | 🔄 **Session Navigate** | Dial rotation to switch between Kiro chat sessions |
@@ -49,6 +50,7 @@ MX Creative Console → C# Plugin (Logi SDK) → HTTP → Bridge Service (Node.j
 - [Logi Options+](https://www.logitech.com/software/logi-options-plus.html) installed
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) (`/usr/local/share/dotnet/dotnet`)
 - [Node.js](https://nodejs.org) (v20+)
+- [ffmpeg](https://ffmpeg.org) (`brew install ffmpeg`) — for iPhone video frame extraction
 - [kiro-cli](https://kiro.dev/cli/) installed and authenticated
 - macOS Accessibility permission for Terminal
 
@@ -96,7 +98,7 @@ Buttons must be assigned in this exact order for ghost animation tiles to align 
 - Terminal → Chat
 - Screen Record
 - Ask Kiro
-- Understand Workspace
+- iPhone Record
 - Start Spec
 - Git Commit
 
@@ -159,6 +161,27 @@ tail -f /tmp/mxkiro-bridge.log
 | Bridge not responding | Check: `curl -s http://localhost:9848/health`. If offline: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mxkiro.bridge.plist` |
 | Plugin not loading | Restart Logi: `pkill -f LogiPluginService; sleep 4; open -a logioptionsplus` |
 | Non-ASCII characters garbled | Known Kiro/Electron clipboard bug when copying FROM Kiro chat. Non-English characters (ö, ü, ñ, é, etc.) get corrupted. Works fine when copying from other apps (browser, Notes, VS Code). |
+
+## iPhone Record Setup (Optional)
+
+The iPhone Record button lets you capture video from your iPhone and have frames automatically extracted and pasted into Kiro chat. Useful for recording physical screens, whiteboards, or devices.
+
+**One-time iPhone Shortcut setup:**
+
+1. Open **Shortcuts** app on iPhone
+2. Create a new Shortcut named "Kiro Record"
+3. Add these actions:
+   - **Record Video** (back camera, ~5 seconds)
+   - **Get Contents of URL**: `http://YOUR-MAC.local:9849/receive-photo`, Method: POST, Body: File (video)
+   - **Show Notification**: "Sent to Kiro!"
+4. Replace `YOUR-MAC.local` with your Mac's hostname (shown in notification when you press the button)
+5. Add Shortcut to Home Screen widget or Action Button for quick access
+
+**Network:** iPhone and Mac must be on the same Wi-Fi network.
+
+**First use:** Allow incoming connections for `node` when macOS firewall dialog appears.
+
+See `docs/iphone-shortcut-setup.md` for detailed instructions.
 
 ## Known Limitations
 
