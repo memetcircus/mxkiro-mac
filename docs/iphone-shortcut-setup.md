@@ -20,6 +20,10 @@ Note this IP. You'll use it in the Shortcut. (It usually stays the same on your 
 
 ## Step 2: Create the iPhone Shortcut
 
+**Quick install:** [Download "Kiro Record" Shortcut](https://www.icloud.com/shortcuts/77cf9e0d6118431d99fcb7f955b2cc55) → Open on iPhone → Change the hostname in the URL to your Mac's hostname from Step 1.
+
+**Or create manually:**
+
 Open the **Shortcuts** app on your iPhone and create a new Shortcut named **"Kiro Photo"**:
 
 ### Actions (in order):

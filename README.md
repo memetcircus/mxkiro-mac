@@ -166,7 +166,9 @@ tail -f /tmp/mxkiro-bridge.log
 
 The iPhone Record button lets you capture video from your iPhone and have frames automatically extracted and pasted into Kiro chat. Useful for recording physical screens, whiteboards, or devices.
 
-**One-time iPhone Shortcut setup:**
+**Quick install:** [Download "Kiro Record" Shortcut](https://www.icloud.com/shortcuts/77cf9e0d6118431d99fcb7f955b2cc55) → Open on iPhone → Change `Akifs-Mac-mini.local` to your Mac's hostname.
+
+**Manual Shortcut setup:**
 
 1. Open **Shortcuts** app on iPhone
 2. Create a new Shortcut named "Kiro Record"
