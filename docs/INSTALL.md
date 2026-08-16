@@ -1,64 +1,48 @@
-# Full Installation Guide
+# How to Install (macOS)
 
-## Requirements
+## Step 1 — Install the Plugin
 
-- macOS (AppleScript-based, macOS only)
-- [Kiro IDE](https://kiro.dev) installed
-- [Logitech MX Creative Console](https://www.logitech.com/products/keyboards/mx-creative-console.html)
-- [Logi Options+](https://www.logitech.com/software/logi-options-plus.html)
-- [Node.js](https://nodejs.org) v20+
-- macOS Accessibility + Screen Recording permissions for "node"
+Logi Options+ → Marketplace → Search "MX Kiro" → Install.
+Buttons appear on your MX Creative Console.
 
-## Quick Start (3 steps)
-
-### 1. Install the Bridge service
+## Step 2 — Install the Bridge (one command)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/memetcircus/mxkiro/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/memetcircus/mxkiro-mac/main/scripts/install.sh | bash
 ```
 
-This installs Node dependencies, generates sprites, starts the Bridge as a LaunchAgent, and verifies everything is running.
+This will:
+- Clone the repo to `~/.mxkiro/`
+- Run `npm install`
+- Register Bridge with launchd (auto-starts on login)
+- Start Bridge immediately
 
-### 2. Grant macOS permissions
+## Step 3 — Grant macOS Permissions
 
-Go to **System Preferences → Privacy & Security**:
-- **Accessibility**: Enable "node"
-- **Screen Recording**: Enable "node"
+On first use, macOS will ask "node wants access" → Allow.
+- **Accessibility** (for keyboard shortcuts)
+- **Screen Recording** (for screenshots)
 
-### 3. Install hooks in your Kiro projects
+## Step 4 — Assign Buttons
 
-For each project you want animation support in:
+Logi Options+ → MX Creative Console → Actions → drag buttons from the plugin category.
 
-```bash
-~/Projects/mxkiro/scripts/install-hooks.sh ~/path/to/your/project
-```
+**Done.** Bridge runs automatically every time your Mac starts.
 
-Or manually copy `.kiro/hooks/notify-bridge-working.kiro.hook` and `notify-bridge-idle.kiro.hook` to your project's `.kiro/hooks/` folder.
+---
 
-### 4. Assign actions in Logi Options+
+## Optional — iPhone Remote
 
-Open Logi Options+ → MX Creative Console → assign actions from the plugin.
+See the [iPhone Shortcut setup guide](https://github.com/memetcircus/mxkiro-mac/blob/main/docs/iphone-shortcut-setup.md) to trigger screenshot/record from your phone.
 
-See [Button Layout](https://github.com/memetcircus/mxkiro#lcd-button-layout-recommended) for recommended tile order.
-
-## Verify Installation
+## Verify
 
 ```bash
 curl -s http://localhost:9848/health
 ```
 
-Should return: `{"status":"ok","state":"idle",...}`
-
-## Troubleshooting
-
-| Issue | Fix |
-|-------|-----|
-| "node" in Privacy settings | This is the Bridge service — grant permissions |
-| Bridge not responding | `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mxkiro.bridge.plist` |
-| Animation not working | Install hooks in workspace: `install-hooks.sh ~/your-project` |
-| Plugin not showing | `pkill -f LogiPluginService; sleep 4; open -a logioptionsplus` |
+Should return `{"status":"ok",...}`
 
 ## Support
 
-- GitHub: [github.com/memetcircus/mxkiro](https://github.com/memetcircus/mxkiro)
-- Issues: [github.com/memetcircus/mxkiro/issues](https://github.com/memetcircus/mxkiro/issues)
+[github.com/memetcircus/mxkiro-mac/issues](https://github.com/memetcircus/mxkiro-mac/issues)
