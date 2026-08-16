@@ -1,5 +1,7 @@
 import { exec, spawn } from 'node:child_process';
-import { platform } from 'node:os';
+import { platform, networkInterfaces, hostname } from 'node:os';
+import { unlinkSync, existsSync } from 'node:fs';
+import { PhotoReceiver } from './photo-receiver.js';
 
 /**
  * Executes keyboard shortcuts and sends prompts to Kiro IDE.
@@ -510,7 +512,7 @@ for (var i = 0; i < files.length; i++) {
 
   /**
    * Take an interactive screenshot and attach it to the active Kiro chat input.
-   * Uses Cmd+Shift+4 (native macOS crosshair) → waits for file → copies to clipboard → pastes into Kiro.
+   * Uses Cmd+Shift+4 → waits for file → compresses to JPEG → pastes into Kiro.
    */
   async screenshotToChat(): Promise<void> {
     if (platform() !== 'darwin') {
@@ -518,21 +520,14 @@ for (var i = 0; i < files.length; i++) {
       return;
     }
 
-    // Full flow in one JXA script:
-    // 1. Find existing screenshots on Desktop to compare later
-    // 2. Simulate Cmd+Shift+4 (native crosshair, no toolbar)
-    // 3. Wait for new screenshot file to appear
-    // 4. Copy it to clipboard as file URL
-    // 5. Activate Kiro, focus chat, paste
-    const script = `
-ObjC.import('AppKit');
+    // Step 1: JXA triggers Cmd+Shift+4, returns new screenshot file path
+    const detectScript = `
 ObjC.import('Foundation');
+ObjC.import('CoreGraphics');
 
-// Get Desktop path
 var fm = $.NSFileManager.defaultManager;
 var desktopPath = ObjC.unwrap($.NSHomeDirectory()) + '/Desktop';
 
-// Get screenshot save location from defaults
 var pipe = $.NSPipe.pipe;
 var task = $.NSTask.alloc.init;
 task.launchPath = '/usr/bin/defaults';
@@ -546,16 +541,12 @@ try {
   if (output && output.length > 0) desktopPath = output;
 } catch(e) {}
 
-// List existing files before screenshot
 var beforeFiles = ObjC.unwrap(fm.contentsOfDirectoryAtPathError(desktopPath, null)) || [];
 var beforeSet = {};
 for (var i = 0; i < beforeFiles.length; i++) {
   beforeSet[ObjC.unwrap(beforeFiles[i])] = true;
 }
 
-// Simulate Cmd+Shift+4 for native crosshair
-ObjC.import('CoreGraphics');
-// key code 21 = '4'
 var keyDown = $.CGEventCreateKeyboardEvent(null, 21, true);
 var keyUp = $.CGEventCreateKeyboardEvent(null, 21, false);
 var flags = $.kCGEventFlagMaskCommand | $.kCGEventFlagMaskShift;
@@ -564,14 +555,14 @@ $.CGEventSetFlags(keyUp, flags);
 $.CGEventPost($.kCGHIDEventTap, keyDown);
 $.CGEventPost($.kCGHIDEventTap, keyUp);
 
-// Wait for new screenshot file (up to 30 seconds)
 var newFile = null;
 for (var attempt = 0; attempt < 300; attempt++) {
   delay(0.1);
   var afterFiles = ObjC.unwrap(fm.contentsOfDirectoryAtPathError(desktopPath, null)) || [];
   for (var j = 0; j < afterFiles.length; j++) {
     var fname = ObjC.unwrap(afterFiles[j]);
-    if (!beforeSet[fname] && fname.indexOf('Screen') !== -1 && fname.indexOf('.png') !== -1) {
+    if (fname.charAt(0) === '.') continue;
+    if (!beforeSet[fname] && fname.indexOf('Screen') !== -1 && (fname.indexOf('.png') !== -1 || fname.indexOf('.jpg') !== -1)) {
       newFile = desktopPath + '/' + fname;
       break;
     }
@@ -579,47 +570,235 @@ for (var attempt = 0; attempt < 300; attempt++) {
   if (newFile) break;
 }
 
-if (!newFile) {
-  // User cancelled
-  'cancelled';
-} else {
-  // Copy file to clipboard
-  var fileURL = $.NSURL.fileURLWithPath(newFile);
-  var pasteboard = $.NSPasteboard.generalPasteboard;
-  pasteboard.clearContents;
-  pasteboard.writeObjects($.NSArray.arrayWithObject(fileURL));
+newFile || 'cancelled';
+    `.trim();
 
-  // Activate Kiro and paste
-  var kiro = Application('Kiro');
-  kiro.activate();
-  delay(0.3);
-  var se = Application('System Events');
-  se.keystroke('l', {using: 'command down'});
-  delay(0.3);
-  se.keystroke('v', {using: 'command down'});
+    const filePath = await new Promise<string>((resolve, reject) => {
+      exec(`osascript -l JavaScript -e '${detectScript.replace(/'/g, "'\\''")}'`, { timeout: 35000 }, (error, stdout) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(stdout.trim());
+        }
+      });
+    });
 
-  // Wait for Kiro to read the file, then delete it
-  delay(2);
-  fm.removeItemAtPathError(newFile, null);
-  
-  'done';
-}
+    if (filePath === 'cancelled') {
+      console.log('📸 Screenshot cancelled by user');
+      throw new Error('cancelled');
+    }
+
+    // Step 2: Compress with sips (JPEG, max 1920px)
+    const compressedPath = filePath.replace('.png', '-kiro.jpg');
+    await new Promise<void>((resolve) => {
+      exec(`sips --resampleWidth 1920 --setProperty format jpeg --setProperty formatOptions 80 "${filePath}" --out "${compressedPath}"`, { timeout: 10000 }, () => resolve());
+    });
+
+    const finalPath = existsSync(compressedPath) ? compressedPath : filePath;
+    console.log(`📸 Screenshot: ${existsSync(compressedPath) ? 'compressed' : 'original'}`);
+
+    // Step 3: Paste into Kiro
+    await this.pasteFileIntoKiroChat(finalPath);
+
+    // Step 4: Cleanup
+    setTimeout(() => {
+      try { if (existsSync(filePath)) unlinkSync(filePath); } catch {}
+      try { if (existsSync(compressedPath)) unlinkSync(compressedPath); } catch {}
+    }, 5000);
+  }
+
+  /**
+   * Paste a file into Kiro chat input as an attachment.
+   * Copies file URL to NSPasteboard, activates Kiro, focuses chat, pastes.
+   */
+  async pasteFileIntoKiroChat(filePath: string): Promise<void> {
+    if (platform() !== 'darwin') return;
+
+    const escaped = filePath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const script = `
+ObjC.import('AppKit');
+var fileURL = $.NSURL.fileURLWithPath("${escaped}");
+var pasteboard = $.NSPasteboard.generalPasteboard;
+pasteboard.clearContents;
+pasteboard.writeObjects($.NSArray.arrayWithObject(fileURL));
+var kiro = Application('Kiro');
+kiro.activate();
+delay(0.3);
+var se = Application('System Events');
+se.keystroke('l', {using: 'command down'});
+delay(0.3);
+se.keystroke('v', {using: 'command down'});
+'done';
     `.trim();
 
     return new Promise((resolve, reject) => {
-      exec(`osascript -l JavaScript -e '${script.replace(/'/g, "'\\''")}'`, { timeout: 35000 }, (error, stdout) => {
+      exec(`osascript -l JavaScript -e '${script.replace(/'/g, "'\\''")}'`, { timeout: 10000 }, (error) => {
         if (error) {
-          console.error(`❌ screenshotToChat failed:`, error.message);
+          console.error(`❌ pasteFileIntoKiroChat failed:`, error.message);
           reject(error);
-        } else if (stdout.trim() === 'cancelled') {
-          console.log('📸 Screenshot cancelled by user');
-          reject(new Error('cancelled'));
         } else {
-          console.log(`📸 Screenshot pasted into Kiro chat`);
+          console.log(`📎 File pasted into Kiro chat`);
           resolve();
         }
       });
     });
+  }
+
+  /**
+   * iPhone Record → Kiro Chat flow.
+   * Opens HTTP receiver, waits for photo/video from iPhone Shortcut.
+   * Photo: paste directly. Video: ffmpeg frame extraction → paste all frames.
+   */
+  private photoReceiver = new PhotoReceiver();
+
+  isIPhoneCameraListening(): boolean {
+    return this.photoReceiver.isListening();
+  }
+
+  async iPhoneCameraToChat(): Promise<void> {
+    if (platform() !== 'darwin') return;
+
+    if (this.photoReceiver.isListening()) {
+      console.log('📱 Already waiting for iPhone media, ignoring');
+      return;
+    }
+
+    const { hostname: localHostname, ips } = this.getLocalNetworkInfo();
+    const port = 9849;
+    const savePath = '/tmp/kiro-iphone-media';
+
+    const ipList = ips.join(', ');
+    await this.showNotification('📱 iPhone Camera', `Waiting for photo/video...\\nURL: ${localHostname}:${port}\\nIPs: ${ipList}`, false);
+
+    const result = await this.photoReceiver.start({
+      port,
+      timeoutMs: 60_000,
+      savePath,
+      maxSizeBytes: 50 * 1024 * 1024,
+    });
+
+    if (!result.success) {
+      await this.showNotification('📱 iPhone Camera', result.error || 'Timed out', true);
+      return;
+    }
+
+    const filePath = result.filePath!;
+    const isVideo = filePath.endsWith('.mp4') || filePath.endsWith('.mov');
+
+    if (isVideo) {
+      await this.showNotification('📱 iPhone Camera', 'Video received! Extracting frames...', false);
+      await this.processVideoToChat(filePath);
+    } else {
+      await this.showNotification('📱 iPhone Camera', 'Photo received!', false);
+      await this.pasteFileIntoKiroChat(filePath);
+      setTimeout(() => { try { if (existsSync(filePath)) unlinkSync(filePath); } catch {} }, 5000);
+    }
+  }
+
+  /**
+   * Process video: extract frames with ffmpeg (1fps, max 8), rotate portrait→landscape, paste into Kiro.
+   */
+  private async processVideoToChat(videoPath: string): Promise<void> {
+    const { mkdirSync, readdirSync, rmSync } = await import('node:fs');
+    const framesDir = '/tmp/kiro-iphone-frames';
+
+    if (existsSync(framesDir)) { rmSync(framesDir, { recursive: true }); }
+    mkdirSync(framesDir, { recursive: true });
+
+    // Probe dimensions to detect portrait
+    const dims = await new Promise<string>((resolve) => {
+      exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, { timeout: 10000 }, (err, out) => resolve(out?.trim() || ''));
+    });
+
+    let vf = 'fps=1,scale=1280:-2';
+    if (dims) {
+      const [w, h] = dims.split(',').map(Number);
+      if (h && w && h > w) {
+        vf = 'fps=1,transpose=1,scale=1280:-2';
+        console.log(`📱 Portrait video (${w}x${h}), rotating to landscape`);
+      }
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      exec(`ffmpeg -i "${videoPath}" -vf "${vf}" -q:v 4 "${framesDir}/frame-%02d.jpg" -y`, { timeout: 30000 }, (error) => {
+        if (error) { reject(error); } else { resolve(); }
+      });
+    });
+
+    let frames = readdirSync(framesDir).filter(f => f.endsWith('.jpg')).sort().map(f => `${framesDir}/${f}`);
+
+    if (frames.length === 0) {
+      await this.showNotification('📱 iPhone Camera', 'No frames extracted', true);
+      return;
+    }
+
+    // Cap at 8 frames — evenly distributed (always include first and last)
+    if (frames.length > 8) {
+      const selected: string[] = [frames[0]!];
+      const step = (frames.length - 1) / 7;
+      for (let i = 1; i < 7; i++) {
+        selected.push(frames[Math.round(i * step)]!);
+      }
+      selected.push(frames[frames.length - 1]!);
+      frames = selected;
+      console.log(`📱 Capped to 8 frames (from ${readdirSync(framesDir).filter(f => f.endsWith('.jpg')).length})`);
+    }
+
+    console.log(`📱 Sending ${frames.length} frames to Kiro`);
+
+    const pasteScript = `
+ObjC.import('AppKit');
+var kiro = Application('Kiro');
+kiro.activate();
+delay(0.5);
+var se = Application('System Events');
+se.keystroke('l', {using: 'command down'});
+delay(0.5);
+var files = [${frames.map(f => `"${f}"`).join(', ')}];
+var pasteboard = $.NSPasteboard.generalPasteboard;
+for (var i = 0; i < files.length; i++) {
+  pasteboard.clearContents;
+  var fileURL = $.NSURL.fileURLWithPath(files[i]);
+  pasteboard.writeObjects($.NSArray.arrayWithObject(fileURL));
+  delay(0.3);
+  se.keystroke('v', {using: 'command down'});
+  delay(0.5);
+}
+'done';
+    `.trim();
+
+    await new Promise<void>((resolve, reject) => {
+      exec(`osascript -l JavaScript -e '${pasteScript.replace(/'/g, "'\\''")}'`, { timeout: 30000 }, (error) => {
+        if (error) { reject(error); } else { resolve(); }
+      });
+    });
+
+    setTimeout(() => {
+      try { rmSync(framesDir, { recursive: true }); } catch {}
+      try { if (existsSync(videoPath)) unlinkSync(videoPath); } catch {}
+    }, 30000);
+
+    console.log(`📱 ${frames.length} iPhone video frames sent to Kiro`);
+  }
+
+  private async showNotification(title: string, message: string, sound: boolean): Promise<void> {
+    const escaped = message.replace(/"/g, '\\"');
+    const escapedTitle = title.replace(/"/g, '\\"');
+    const soundClause = sound ? ' sound name "Submarine"' : '';
+    exec(`osascript -e 'display notification "${escaped}" with title "${escapedTitle}"${soundClause}'`);
+  }
+
+  private getLocalNetworkInfo(): { hostname: string; ips: string[] } {
+    const ips: string[] = [];
+    const interfaces = networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name] || []) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          ips.push(iface.address);
+        }
+      }
+    }
+    return { hostname: hostname(), ips };
   }
 
   private async executeMacOS(shortcut: string): Promise<void> {

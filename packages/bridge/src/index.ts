@@ -37,6 +37,13 @@ const CANCEL_WORKING_SUPPRESSION_MS = 5000;
 // Real context usage from Kiro IDE session files
 let contextUsagePercent = 0;
 
+// Media segment tracking — Kiro sessions die at 100 inline media segments
+let mediaCount = 0;
+let lastSessionFilePath = '';
+const MEDIA_LIMIT = 100;
+const MEDIA_CRITICAL_MIN = 70;   // fire ghost
+const MEDIA_BLOCK_MIN = 90;      // media actions refused
+
 // File-based state detection: track last session file modification time
 let lastSessionMtime = 0;
 let lastSessionSize = 0; // Track file size to distinguish real work from metadata updates
@@ -51,9 +58,21 @@ const HEALTH_WORRIED_MIN = 60;   // 60%+ → session getting long
 const HEALTH_CRITICAL_MIN = 75;  // 75%+ → new session recommended (summarization imminent)
 
 function getHealthLevel(): string {
-  if (contextUsagePercent >= HEALTH_CRITICAL_MIN) return 'critical';
-  if (contextUsagePercent >= HEALTH_WORRIED_MIN) return 'worried';
+  // Two-axis health: return the worse of context vs media severity
+  const contextSeverity = contextUsagePercent >= HEALTH_CRITICAL_MIN ? 'critical'
+    : contextUsagePercent >= HEALTH_WORRIED_MIN ? 'worried' : 'normal';
+
+  const mediaSeverity = mediaCount >= MEDIA_CRITICAL_MIN ? 'critical'
+    : mediaCount >= 50 ? 'worried' : 'normal';
+
+  // Return the worse one
+  if (contextSeverity === 'critical' || mediaSeverity === 'critical') return 'critical';
+  if (contextSeverity === 'worried' || mediaSeverity === 'worried') return 'worried';
   return 'normal';
+}
+
+function isMediaBlocked(): boolean {
+  return mediaCount >= MEDIA_BLOCK_MIN;
 }
 
 // WebSocket server — Logi Plugin connects here
@@ -156,11 +175,13 @@ interface SessionFileResult {
   usage: number;
   mtime: number;
   totalSize: number;
+  parsedMediaCount: number;
+  filePath: string;
 }
 
 async function readLatestSessionFile(): Promise<SessionFileResult> {
   try {
-    if (!existsSync(KIRO_SESSIONS_BASE)) return { usage: 0, mtime: 0, totalSize: 0 };
+    if (!existsSync(KIRO_SESSIONS_BASE)) return { usage: 0, mtime: 0, totalSize: 0, parsedMediaCount: 0, filePath: '' };
 
     const workspaceDirs = await readdir(KIRO_SESSIONS_BASE);
 
@@ -195,11 +216,11 @@ async function readLatestSessionFile(): Promise<SessionFileResult> {
       }
     }
 
-    if (!latestFilePath) return { usage: 0, mtime: 0, totalSize: 0 };
+    if (!latestFilePath) return { usage: 0, mtime: 0, totalSize: 0, parsedMediaCount: 0, filePath: '' };
 
     // Only read if mtime actually changed (avoid redundant reads)
     if (latestMtime <= lastSessionMtime) {
-      return { usage: contextUsagePercent, mtime: latestMtime, totalSize: latestSize };
+      return { usage: contextUsagePercent, mtime: latestMtime, totalSize: latestSize, parsedMediaCount: mediaCount, filePath: latestFilePath };
     }
 
     // Read the single most recent file
@@ -209,12 +230,27 @@ async function readLatestSessionFile(): Promise<SessionFileResult> {
       const usage = typeof data.contextUsagePercentage === 'number'
         ? data.contextUsagePercentage
         : 0;
-      return { usage, mtime: latestMtime, totalSize: latestSize };
+
+      // Count media segments: history[].message.content[] with type === 'imageUrl'
+      let parsedMediaCount = 0;
+      if (Array.isArray(data.history)) {
+        for (const entry of data.history) {
+          if (entry?.message?.content && Array.isArray(entry.message.content)) {
+            for (const part of entry.message.content) {
+              if (part?.type === 'imageUrl') {
+                parsedMediaCount++;
+              }
+            }
+          }
+        }
+      }
+
+      return { usage, mtime: latestMtime, totalSize: latestSize, parsedMediaCount, filePath: latestFilePath };
     } catch {
-      return { usage: contextUsagePercent, mtime: latestMtime, totalSize: latestSize };
+      return { usage: contextUsagePercent, mtime: latestMtime, totalSize: latestSize, parsedMediaCount: mediaCount, filePath: latestFilePath };
     }
   } catch {
-    return { usage: 0, mtime: 0, totalSize: 0 };
+    return { usage: 0, mtime: 0, totalSize: 0, parsedMediaCount: 0, filePath: '' };
   }
 }
 
@@ -436,6 +472,14 @@ httpServer.onAskKiro(() => {
     console.error('❌ Ask Kiro failed:', error.message);
   });
 });
+
+httpServer.onIPhoneCamera(() => {
+  void shortcuts.iPhoneCameraToChat().catch((error: Error) => {
+    console.error('❌ iPhone camera failed:', error.message);
+  });
+});
+
+httpServer.setIPhoneCameraListeningGetter(() => shortcuts.isIPhoneCameraListening());
 
 // Session navigation — direct, no threshold
 httpServer.onSessionNavigate((ticks) => {

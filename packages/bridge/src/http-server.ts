@@ -25,6 +25,11 @@ export class HttpServer {
   private terminalToChatHandler: (() => void) | null = null;
   private screenRecordHandler: (() => void) | null = null;
   private askKiroHandler: (() => void) | null = null;
+  private iPhoneCameraHandler: (() => void) | null = null;
+  private iPhoneCameraListeningGetter: (() => boolean) | null = null;
+  private mediaCount: number = 0;
+  private mediaLimit: number = 100;
+  private mediaBlocked: boolean = false;
 
   constructor(port: number) {
     this.port = port;
@@ -78,6 +83,20 @@ export class HttpServer {
     this.askKiroHandler = handler;
   }
 
+  onIPhoneCamera(handler: () => void): void {
+    this.iPhoneCameraHandler = handler;
+  }
+
+  setIPhoneCameraListeningGetter(getter: () => boolean): void {
+    this.iPhoneCameraListeningGetter = getter;
+  }
+
+  setMediaState(count: number, limit: number, blocked: boolean): void {
+    this.mediaCount = count;
+    this.mediaLimit = limit;
+    this.mediaBlocked = blocked;
+  }
+
   setState(state: string): void {
     const prev = this.currentState;
     this.currentState = state;
@@ -121,6 +140,11 @@ export class HttpServer {
           messageCount: this.messageCount,
           healthLevel: this.healthLevel,
           contextUsagePercent: this.messageCount,
+          mediaCount: this.mediaCount,
+          mediaLimit: this.mediaLimit,
+          mediaRemaining: Math.max(0, this.mediaLimit - this.mediaCount),
+          mediaBlocked: this.mediaBlocked,
+          iphoneCameraListening: this.iPhoneCameraListeningGetter?.() ?? false,
         }));
         return;
       }
@@ -259,6 +283,20 @@ export class HttpServer {
         console.log('❓ Ask Kiro requested');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
+        return;
+      }
+
+      // GET /iphone-camera — start iPhone photo/video receiver
+      if (url.pathname === '/iphone-camera' && req.method === 'GET') {
+        if (this.iPhoneCameraListeningGetter?.()) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: 'already listening' }));
+          return;
+        }
+        this.iPhoneCameraHandler?.();
+        console.log('📱 iPhone camera requested');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, state: 'listening' }));
         return;
       }
 
