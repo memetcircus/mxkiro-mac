@@ -196,6 +196,10 @@ The iPhone Record button lets you capture video from your iPhone and have frames
 
 **Quick install:** [Download "Kiro Record" Shortcut](https://www.icloud.com/shortcuts/77cf9e0d6118431d99fcb7f955b2cc55) → Open on iPhone → Change `Akifs-Mac-mini.local` to your Mac's hostname.
 
+<p align="center">
+  <img src="assets/Kiro_Record_Shortcut.png" alt="Kiro Record Shortcut configuration" width="300">
+</p>
+
 **Manual Shortcut setup:**
 
 1. Open **Shortcuts** app on iPhone
