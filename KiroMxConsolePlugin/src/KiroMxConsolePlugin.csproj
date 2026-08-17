@@ -40,6 +40,13 @@
     <Message Text="✅ Package files copied to $(OutputPath)..\" Importance="High" />
   </Target>
 
+  <Target Name="CopyBridgeBinary" AfterTargets="PostBuildEvent">
+    <Message Text="📦 Copying Bridge binary..." Importance="High" />
+    <Copy Condition="Exists('$(BaseOutputPath)mxkiro-bridge')"
+          SourceFiles="$(BaseOutputPath)mxkiro-bridge"
+          DestinationFiles="$(OutputPath)mxkiro-bridge" />
+  </Target>
+
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Condition="$(OS) == 'Windows_NT'" Command="echo $(BaseOutputPath)$(Configuration)\ &gt; &quot;$(PluginDir)$(ProjectName).link&quot;" />
     <Exec Condition="$(OS) != 'Windows_NT'" Command="echo $(BaseOutputPath)$(Configuration)\ &gt; $(PluginDir)$(ProjectName).link" />
