@@ -58,7 +58,11 @@ This clones the repo, installs dependencies, and sets up the Bridge as an auto-s
 
 **Step 3 — Allow macOS permissions**
 
-On first use, macOS will ask for Accessibility and Screen Recording permissions for `node`. Allow both — this enables keyboard simulation and screenshot capture.
+On first use, macOS will ask for Accessibility and Screen Recording permissions for `node`. **Click "Allow"** — this enables keyboard simulation and screenshot capture.
+
+<p align="center">
+  <img src="assets/node_permission.png" alt="Allow node to control System Events" width="400">
+</p>
 
 **Step 4 — Assign buttons**
 
