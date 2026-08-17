@@ -19,9 +19,13 @@ This will:
 
 ## Step 3 — Grant macOS Permissions
 
-On first use, macOS will ask "node wants access" → Allow.
+On first use, macOS will ask "node wants access" → **Click "Allow"**.
 - **Accessibility** (for keyboard shortcuts)
 - **Screen Recording** (for screenshots)
+
+<p align="center">
+  <img src="../assets/node_permission.png" alt="Allow node to control System Events" width="400">
+</p>
 
 ## Step 4 — Assign Buttons
 
