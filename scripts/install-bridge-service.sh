@@ -32,8 +32,10 @@ fi
 
 # Generate plist with correct paths
 NPX_PATH="$(which npx)"
+NODE_DIR="$(dirname $(which node))"
 sed -e "s|BRIDGE_PATH_PLACEHOLDER|$BRIDGE_DIR|g" \
-    -e "s|/usr/local/bin/npx|$NPX_PATH|g" \
+    -e "s|NPX_PATH_PLACEHOLDER|$NPX_PATH|g" \
+    -e "s|/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin|$NODE_DIR:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin|g" \
     "$PLIST_SRC" > "$PLIST_DST"
 
 # Load the service

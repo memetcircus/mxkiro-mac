@@ -76,7 +76,7 @@ Open Logi Options+ → your MX Creative Console → Actions tab → drag actions
 - [Kiro IDE](https://kiro.dev) installed
 - [Logitech MX Creative Console](https://www.logitech.com/products/keyboards/mx-creative-console.html)
 - [Logi Options+](https://www.logitech.com/software/logi-options-plus.html) installed
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) (`/usr/local/share/dotnet/dotnet`)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) (`dotnet`)
 - [Node.js](https://nodejs.org) (v20+)
 - [ffmpeg](https://ffmpeg.org) (`brew install ffmpeg`) — for iPhone video frame extraction
 - [kiro-cli](https://kiro.dev/cli/) installed and authenticated
@@ -92,8 +92,11 @@ cd mxkiro
 # 2. Install dependencies
 npm install
 
-# 3. Build C# plugin
-cd KiroMxConsolePlugin && /usr/local/share/dotnet/dotnet build src/KiroMxConsolePlugin.csproj
+# 3. Build shared package
+npm run build --workspace=packages/shared
+
+# 4. Build C# plugin
+cd KiroMxConsolePlugin && dotnet build src/KiroMxConsolePlugin.csproj
 
 # 4. Generate sprite animations
 npx tsx scripts/generate-sprites.ts
@@ -159,7 +162,7 @@ Kiro auto-summarizes at 80%, so the fire animation warns you **before** context 
 
 ```bash
 # Build C# plugin (auto-reloads in Logi Options+)
-cd KiroMxConsolePlugin && /usr/local/share/dotnet/dotnet build src/KiroMxConsolePlugin.csproj
+cd KiroMxConsolePlugin && dotnet build src/KiroMxConsolePlugin.csproj
 
 # Start Bridge manually (instead of LaunchAgent)
 cd packages/bridge && npx tsx src/index.ts

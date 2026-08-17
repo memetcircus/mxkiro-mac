@@ -6,7 +6,7 @@
     <string>com.mxkiro.bridge</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/npx</string>
+        <string>NPX_PATH_PLACEHOLDER</string>
         <string>tsx</string>
         <string>src/index.ts</string>
     </array>

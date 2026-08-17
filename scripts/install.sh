@@ -60,6 +60,10 @@ echo "Installing dependencies..."
 cd "$INSTALL_DIR"
 npm install --silent 2>/dev/null
 
+# ─── Build shared package ───
+echo "Building shared package..."
+npm run build --workspace=packages/shared 2>/dev/null || npx tsc -p packages/shared/tsconfig.json 2>/dev/null || true
+
 # ─── Stop existing service ───
 if launchctl list 2>/dev/null | grep -q "$PLIST_NAME"; then
   echo "Stopping existing Bridge service..."
