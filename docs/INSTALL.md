@@ -2,24 +2,13 @@
 
 ## Step 1 — Install the Plugin
 
-Logi Options+ → Marketplace → Search "MX Kiro" → Install.
-Buttons appear on your MX Creative Console.
+Download the `.lplug4` file from [Logi Marketplace](https://marketplace.logi.com) and double-click to install.
 
-## Step 2 — Install the Bridge (one command)
+The plugin includes an embedded Bridge service that starts automatically — no terminal commands needed.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/memetcircus/mxkiro-mac/main/scripts/install.sh | bash
-```
+## Step 2 — Grant macOS Permissions
 
-This will:
-- Clone the repo to `~/.mxkiro/`
-- Run `npm install`
-- Register Bridge with launchd (auto-starts on login)
-- Start Bridge immediately
-
-## Step 3 — Grant macOS Permissions
-
-On first use, macOS will ask "node wants access" → **Click "Allow"**.
+On first button press, macOS will ask "node wants access" → **Click "Allow"**.
 - **Accessibility** (for keyboard shortcuts)
 - **Screen Recording** (for screenshots)
 
@@ -27,25 +16,35 @@ On first use, macOS will ask "node wants access" → **Click "Allow"**.
   <img src="../assets/node_permission.png" alt="Allow node to control System Events" width="400">
 </p>
 
-## Step 4 — Assign Buttons
+## Step 3 — Assign Buttons
 
-Logi Options+ → MX Creative Console → Actions → drag buttons from the plugin category.
+Open Logi Options+ → your MX Creative Console → Actions tab → drag buttons from the "Kirocan" category.
 
-**Done.** Bridge runs automatically every time your Mac starts.
+**Done.** Bridge runs automatically whenever the plugin is loaded.
 
 ---
 
-## Optional — iPhone Remote
+## Optional — iPhone Record
 
-See the [iPhone Shortcut setup guide](https://github.com/memetcircus/mxkiro-mac/blob/main/docs/iphone-shortcut-setup.md) to trigger screenshot/record from your phone.
+See the [iPhone Shortcut setup guide](iphone-shortcut-setup.md) to capture video from your iPhone directly into Kiro chat.
 
-## Verify
+**Requires:** iPhone and Mac on the same Wi-Fi network + `ffmpeg` installed (`brew install ffmpeg`).
+
+## Verify Bridge is Running
 
 ```bash
 curl -s http://localhost:9848/health
 ```
 
 Should return `{"status":"ok",...}`
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Buttons do nothing | Check if Bridge is running: `curl http://localhost:9848/health`. If not, restart Logi Options+. |
+| "node" permission dialog | Click "Allow" — needed for keyboard automation |
+| iPhone Record timeout | Ensure iPhone and Mac on same Wi-Fi. Check hostname in Shortcut URL. |
 
 ## Support
 

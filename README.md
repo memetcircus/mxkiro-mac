@@ -44,31 +44,23 @@ MX Creative Console → C# Plugin (Logi SDK) → HTTP → Bridge Service (Node.j
 
 ## Installation
 
-**Step 1 — Install Plugin** (Logi Marketplace)
+**Step 1 — Install Plugin**
 
-Open Logi Options+ → Marketplace → search "MX Kiro" → Install. Buttons will appear on your MX Creative Console.
+Download and open the `.lplug4` file from [Logi Marketplace](https://marketplace.logi.com). The plugin installs automatically including the Bridge service.
 
-**Step 2 — Install Bridge** (one command in Terminal)
+**Step 2 — Allow macOS permissions**
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/memetcircus/mxkiro/main/scripts/install.sh | bash
-```
-
-This clones the repo, installs dependencies, and sets up the Bridge as an auto-start service. It runs automatically on every login — no manual steps needed after this.
-
-**Step 3 — Allow macOS permissions**
-
-On first use, macOS will ask for Accessibility and Screen Recording permissions for `node`. **Click "Allow"** — this enables keyboard simulation and screenshot capture.
+On first button press, macOS will ask for permissions for `node`. **Click "Allow"** — this enables keyboard simulation and screenshot capture.
 
 <p align="center">
   <img src="assets/node_permission.png" alt="Allow node to control System Events" width="400">
 </p>
 
-**Step 4 — Assign buttons**
+**Step 3 — Assign buttons**
 
-Open Logi Options+ → your MX Creative Console → Actions tab → drag actions from the "MX Kiro" category onto your buttons.
+Open Logi Options+ → your MX Creative Console → Actions tab → drag actions from the "Kirocan" category onto your buttons.
 
-**Done!** Press any button and Kiro responds.
+**Done!** Press any button and Kiro responds. The Bridge starts automatically with the plugin — no terminal, no setup scripts.
 
 ## Requirements
 
