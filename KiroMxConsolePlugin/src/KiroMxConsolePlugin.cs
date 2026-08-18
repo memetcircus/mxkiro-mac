@@ -50,14 +50,39 @@ namespace Loupedeck.KiroMxConsolePlugin
         {
             try
             {
-                // Bridge binary is in the same directory as the plugin DLL
-                var pluginDir = Path.GetDirectoryName(this.GetType().Assembly.Location)
-                    ?? AppDomain.CurrentDomain.BaseDirectory;
-                var bridgePath = Path.Combine(pluginDir, "mxkiro-bridge");
+                // Find the bridge binary — try multiple known locations
+                String bridgePath = null;
 
-                if (!File.Exists(bridgePath))
+                // Option 1: Same directory as plugin DLL (development mode via .link file)
+                var assemblyDir = Path.GetDirectoryName(this.GetType().Assembly.Location);
+                if (!String.IsNullOrEmpty(assemblyDir))
                 {
-                    PluginLog.Warning($"Bridge binary not found at: {bridgePath}");
+                    var candidate = Path.Combine(assemblyDir, "mxkiro-bridge");
+                    if (File.Exists(candidate)) bridgePath = candidate;
+                }
+
+                // Option 2: Logi Plugins directory (installed via .lplug4)
+                if (bridgePath == null)
+                {
+                    var pluginsBase = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        "Library", "Application Support", "Logi", "LogiPluginService", "Plugins",
+                        "KiroMxConsole", "bin", "mxkiro-bridge");
+                    if (File.Exists(pluginsBase)) bridgePath = pluginsBase;
+                }
+
+                // Option 3: Development build output
+                if (bridgePath == null)
+                {
+                    var devPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        "Projects", "mxkiro", "KiroMxConsolePlugin", "bin", "mxkiro-bridge");
+                    if (File.Exists(devPath)) bridgePath = devPath;
+                }
+
+                if (bridgePath == null)
+                {
+                    PluginLog.Warning("Bridge binary not found in any known location");
                     return;
                 }
 
